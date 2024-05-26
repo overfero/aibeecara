@@ -39,9 +39,9 @@ mdit-py-plugins==0.3.3
 mdurl==0.1.2
 multidict==6.0.4
 # numpy==1.26.4
-orjson==3.9.2
+# orjson==3.9.2
 packaging==23.1
-pandas==2.0.3
+# pandas==2.0.3
 Pillow==10.0.0
 pycodestyle==2.10.0
 pydantic==2.0.3
