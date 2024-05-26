@@ -1,3 +1,4 @@
+import concurrent.futures
 from typing import Dict, List, Union
 
 import google.generativeai as genai
@@ -60,7 +61,7 @@ def predict_custom_trained_model_sample(
     return predictions[0]
 
 
-def gemini_flash(
+def gemini_flash_async(
     message: str,
     history: list,
     temperature: float,
@@ -70,6 +71,27 @@ def gemini_flash(
 ) -> str:
     response = model.generate_content(message)
     return response.text
+
+
+def gemini_flash(
+    message: str,
+    history: list,
+    temperature: float,
+    top_p: float,
+    top_k: int,
+    max_new_tokens: int,
+) -> str:
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future = executor.submit(
+            gemini_flash_async,
+            message,
+            history,
+            temperature,
+            top_p,
+            top_k,
+            max_new_tokens,
+        )
+        return future.result()
 
 
 DESCRIPTION = """
