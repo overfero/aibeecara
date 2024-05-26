@@ -1,9 +1,14 @@
 from typing import Dict, List, Union
 
+import google.generativeai as genai
 import gradio as gr
 from google.cloud import aiplatform
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Value
+
+GOOGLE_API_KEY = "AIzaSyBTg3eEIsM0P124XO8LfbeGTjb3dd_Va98"
+genai.configure(api_key=GOOGLE_API_KEY)
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 
 def predict_custom_trained_model_sample(
@@ -55,6 +60,18 @@ def predict_custom_trained_model_sample(
     return predictions[0]
 
 
+def gemini_flash(
+    message: str,
+    history: list,
+    temperature: float,
+    top_p: float,
+    top_k: int,
+    max_new_tokens: int,
+) -> str:
+    response = model.generate_content(message)
+    return response.text
+
+
 DESCRIPTION = """
 <div>
 <h1 style="text-align: center;">AibeeCara English Tutor</h1>
@@ -104,7 +121,7 @@ chatbot = gr.Chatbot(height=450, placeholder=PLACEHOLDER, label="Aibeecara Assis
 with gr.Blocks(fill_height=True, css=css) as demo:
     gr.Markdown(DESCRIPTION)
     gr.ChatInterface(
-        fn=predict_custom_trained_model_sample,
+        fn=gemini_flash,
         chatbot=chatbot,
         fill_height=True,
         additional_inputs_accordion=gr.Accordion(
@@ -123,7 +140,7 @@ with gr.Blocks(fill_height=True, css=css) as demo:
                 minimum=128,
                 maximum=4096,
                 step=1,
-                value=512,
+                value=128,
                 label="Max new tokens",
                 render=False,
             ),
@@ -148,11 +165,3 @@ with gr.Blocks(fill_height=True, css=css) as demo:
         ],
         cache_examples=False,
     )
-
-
-# demo = gr.Interface(
-#     fn=greet,
-#     inputs=gr.components.Textbox(label='Input'),
-#     outputs=gr.components.Textbox(label='Output'),
-#     allow_flagging='never'
-# )

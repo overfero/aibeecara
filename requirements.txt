@@ -71,3 +71,4 @@ websockets==11.0.3
 yarl==1.9.2
 zipp==3.16.2
 google-cloud-aiplatform==1.52.0
+google-generativeai==0.5.4
