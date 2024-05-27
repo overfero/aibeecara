@@ -10,6 +10,7 @@ from google.protobuf.struct_pb2 import Value
 GOOGLE_API_KEY = "AIzaSyBTg3eEIsM0P124XO8LfbeGTjb3dd_Va98"
 genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
+chat = model.start_chat(history=[])
 
 
 def predict_custom_trained_model_sample(
@@ -68,7 +69,6 @@ def gemini_flash(
     top_p: float,
     top_k: int,
     max_new_tokens: int,
-    chat_session,
 ) -> str:
     """Processes a message using the Gemini Flash model, handling concurrent requests."""
     with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -80,7 +80,6 @@ def gemini_flash(
             top_p,
             top_k,
             max_new_tokens,
-            chat_session,
         )
         return future.result()
 
@@ -92,10 +91,9 @@ def gemini_flash_async(
     top_p: float,
     top_k: int,
     max_new_tokens: int,
-    chat_session,
 ) -> str:
     """Sends a message to the Gemini Flash model asynchronously."""
-    response = chat_session.send_message(message)  # Use the provided chat session
+    response = chat.send_message(message)  # Use the provided chat session
     return response.text
 
 
@@ -192,8 +190,3 @@ with gr.Blocks(fill_height=True, css=css) as demo:
         ],
         cache_examples=False,
     )
-    # Initialize the chat session outside the interface but within the scope of the app
-    chat_session = genai.GenerativeModel("gemini-1.5-flash").start_chat(history=[])
-
-    # Pass the chat session to the `gemini_flash` function
-    demo.gemini_flash.kwargs["chat_session"] = chat_session
