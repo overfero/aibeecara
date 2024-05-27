@@ -61,18 +61,6 @@ def predict_custom_trained_model_sample(
     return predictions[0]
 
 
-def gemini_flash_async(
-    message: str,
-    history: list,
-    temperature: float,
-    top_p: float,
-    top_k: int,
-    max_new_tokens: int,
-) -> str:
-    response = model.generate_content(message)
-    return response.text
-
-
 def gemini_flash(
     message: str,
     history: list,
@@ -80,8 +68,10 @@ def gemini_flash(
     top_p: float,
     top_k: int,
     max_new_tokens: int,
+    chat_session,
 ) -> str:
-    with concurrent.futures.ThreadPoolExecutor() as executor:
+    """Processes a message using the Gemini Flash model, handling concurrent requests."""
+    with concurrent.futures.ProcessPoolExecutor() as executor:
         future = executor.submit(
             gemini_flash_async,
             message,
@@ -90,8 +80,23 @@ def gemini_flash(
             top_p,
             top_k,
             max_new_tokens,
+            chat_session,
         )
         return future.result()
+
+
+def gemini_flash_async(
+    message: str,
+    history: list,
+    temperature: float,
+    top_p: float,
+    top_k: int,
+    max_new_tokens: int,
+    chat_session,
+) -> str:
+    """Sends a message to the Gemini Flash model asynchronously."""
+    response = chat_session.send_message(message)  # Use the provided chat session
+    return response.text
 
 
 DESCRIPTION = """
@@ -187,3 +192,8 @@ with gr.Blocks(fill_height=True, css=css) as demo:
         ],
         cache_examples=False,
     )
+    # Initialize the chat session outside the interface but within the scope of the app
+    chat_session = genai.GenerativeModel("gemini-1.5-flash").start_chat(history=[])
+
+    # Pass the chat session to the `gemini_flash` function
+    demo.gemini_flash.kwargs["chat_session"] = chat_session
