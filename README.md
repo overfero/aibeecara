@@ -10,3 +10,4 @@ uvicorn run:app --reload
 ## Step
 - pip -r requirement.py
 - isi api key di gradio_ui.py
+- uvicorn run:app --reload 
