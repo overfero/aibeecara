@@ -1,101 +1,13 @@
-import concurrent.futures
-from typing import Dict, List, Union
+# import concurrent.futures
+# from typing import List, Union
+import json
+import re
 
 import google.generativeai as genai
 import gradio as gr
-from google.cloud import aiplatform
-from google.protobuf import json_format
-from google.protobuf.struct_pb2 import Value
-
-GOOGLE_API_KEY = "AIzaSyBTg3eEIsM0P124XO8LfbeGTjb3dd_Va98"
-genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel("gemini-1.5-flash")
-chat = model.start_chat(history=[])
-
-
-def predict_custom_trained_model_sample(
-    message: str,
-    history: list,
-    temperature: float,
-    top_p: float,
-    top_k: int,
-    max_new_tokens: int,
-    project: str = "793363955875",
-    endpoint_id: str = "6923994156012404736",
-    location: str = "us-east4",
-    api_endpoint: str = "us-east4-aiplatform.googleapis.com",
-):
-    conversation = []
-    for user, assistant in history:
-        conversation.extend(
-            [
-                {"role": "user", "content": user},
-                {"role": "assistant", "content": assistant},
-            ]
-        )
-    conversation.append({"role": "user", "content": message})
-    instances = [
-        {
-            "inputs": message,
-        }
-    ]
-    client_options = {"api_endpoint": api_endpoint}
-    client = aiplatform.gapic.PredictionServiceClient(client_options=client_options)
-    instances = instances if isinstance(instances, list) else [instances]
-    instances = [
-        json_format.ParseDict(instance_dict, Value()) for instance_dict in instances
-    ]
-    parameters_dict = {
-        "max_new_tokens": max_new_tokens,
-        "temperature": temperature,
-        "top_p": top_p,
-        "top_k": top_k,
-    }
-    parameters = json_format.ParseDict(parameters_dict, Value())
-    endpoint = client.endpoint_path(
-        project=project, location=location, endpoint=endpoint_id
-    )
-    response = client.predict(
-        endpoint=endpoint, instances=instances, parameters=parameters
-    )
-    predictions = response.predictions
-    return predictions[0]
-
-
-def gemini_flash(
-    message: str,
-    history: list,
-    temperature: float,
-    top_p: float,
-    top_k: int,
-    max_new_tokens: int,
-) -> str:
-    """Processes a message using the Gemini Flash model, handling concurrent requests."""
-    with concurrent.futures.ProcessPoolExecutor() as executor:
-        future = executor.submit(
-            gemini_flash_async,
-            message,
-            history,
-            temperature,
-            top_p,
-            top_k,
-            max_new_tokens,
-        )
-        return future.result()
-
-
-def gemini_flash_async(
-    message: str,
-    history: list,
-    temperature: float,
-    top_p: float,
-    top_k: int,
-    max_new_tokens: int,
-) -> str:
-    """Sends a message to the Gemini Flash model asynchronously."""
-    response = chat.send_message(message)  # Use the provided chat session
-    return response.text
-
+import requests
+from IPython.display import Audio
+from pydub import AudioSegment
 
 DESCRIPTION = """
 <div>
@@ -135,17 +47,60 @@ h1 {
 }
 """
 
+url = "https://api.deepgram.com/v1/speak?model=aura-asteria-en"
+api_key = "<API KEY>"
+output_path = "aibee_output.mp3"
 
-def greet(message: str, history: list, temperature: float, max_new_tokens: int) -> str:
+headers = {"Authorization": f"Token {api_key}", "Content-Type": "application/json"}
 
-    return message
+GOOGLE_API_KEY = "<API KEYS>"
+genai.configure(api_key=GOOGLE_API_KEY)
+model = genai.GenerativeModel("gemini-1.5-flash")
+chat = model.start_chat(history=[])
+
+
+def play_audio(file_path):
+    return Audio(file_path, autoplay=True)
+
+
+def text_to_speech(text):
+    payload = {"text": text[-1][-1]}
+    response = requests.post(url, headers=headers, json=payload)
+    if response.status_code == 200:
+        with open(output_path, "wb") as f:
+            f.write(response.content)
+        # data = bytes.decode(response.content)
+        # audio_data = AudioSegment.from_mp3(data)
+        return output_path
+        # play_audio(output_path)
+    else:
+        print(f"Error: {response.status_code} - {response.text}")
+
+
+# def update_audio(text):
+#     audio_component.value = output_path
+
+
+def gemini_flash(
+    message: str,
+    history: list,
+    temperature: float,
+    top_p: float,
+    top_k: int,
+    max_new_tokens: int,
+) -> str:
+    print(f"Message: {message}")
+    response = chat.send_message(message)
+    # text_to_speech(response.text)
+    return response.text
 
 
 chatbot = gr.Chatbot(height=450, placeholder=PLACEHOLDER, label="Aibeecara Assistant")
 
 with gr.Blocks(fill_height=True, css=css) as demo:
     gr.Markdown(DESCRIPTION)
-    gr.ChatInterface(
+    input_audio_component = gr.Audio(sources="microphone", label="Input Audio")
+    interface = gr.ChatInterface(
         fn=gemini_flash,
         chatbot=chatbot,
         fill_height=True,
@@ -189,4 +144,10 @@ with gr.Blocks(fill_height=True, css=css) as demo:
             ["Describe your favorite hobby in English and why you enjoy it."],
         ],
         cache_examples=False,
+    )
+    # audio_component = gr.Audio(value=output_path, label="Audio Output", autoplay=False)
+    chatbot.change(
+        text_to_speech,
+        inputs=[chatbot],
+        outputs=[gr.Audio(label="Audio Output", type="filepath", autoplay=True)],
     )
